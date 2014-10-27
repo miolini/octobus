@@ -60,12 +60,14 @@ func main() {
 	}
 }
 
+//RemoteHost struct
 type RemoteHost struct {
 	Network string
 	Addr    string
 	Config  ssh.ClientConfig
 }
 
+//NewRemoteHostTcp4 create new tcp4 host
 func NewRemoteHostTcp4(addr string, config ssh.ClientConfig) (host RemoteHost, err error) {
 	parsed, err := url.Parse(fmt.Sprintf("ssh://%s", addr))
 	if err != nil {
@@ -90,14 +92,17 @@ func NewRemoteHostTcp4(addr string, config ssh.ClientConfig) (host RemoteHost, e
 	return
 }
 
+//RemoteRunner struct
 type RemoteRunner struct {
 	waitGroup *sync.WaitGroup
 }
 
+//NewRemoteRunner new RemoteRunner
 func NewRemoteRunner() *RemoteRunner {
 	return &RemoteRunner{}
 }
 
+//TailForever run tail on ssh server
 func (rr *RemoteRunner) TailForever(file string, useSudo bool, hosts ...RemoteHost) (err error) {
 	cmd := fmt.Sprintf("tail -f %s", file)
 	if useSudo {
@@ -123,11 +128,13 @@ func (rr *RemoteRunner) run(cmd string, host RemoteHost) (err error) {
 			log.Printf("%s@%s: error: %s", host.Config.User, host.Addr, err)
 		}
 	}()
-	log.Printf("%s@%s: connect", host.Config.User, host.Addr)
+	// log.Printf("%s@%s: connecting", host.Config.User, host.Addr)
 	client, err := ssh.Dial(host.Network, host.Addr, &host.Config)
 	if err != nil {
 		return err
 	}
+	defer client.Close()
+	log.Printf("%s@%s: connected", host.Config.User, host.Addr)
 	session, err := client.NewSession()
 	if err != nil {
 		return err
@@ -142,8 +149,10 @@ func (rr *RemoteRunner) run(cmd string, host RemoteHost) (err error) {
 	return
 }
 
+//WriterCallbackFunc callback func for WriterCallback
 type WriterCallbackFunc func(endpoint string, data []byte)
 
+//WriterCallback io.Writer who call callback func
 type WriterCallback struct {
 	io.Writer
 	Endpoint string
