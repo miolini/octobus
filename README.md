@@ -17,3 +17,7 @@ Log monitoring in Go over multitiple ssh servers.
   -s=false: use sudo
   -u="": default username
 ```
+
+# Issues
+
+- do not support encrypted ssh keys
