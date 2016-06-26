@@ -24,7 +24,10 @@ func main() {
 	flVerbose := flag.Bool("verbose", false, "verbose mode (default false)")
 	flReconnect := flag.Bool("reconnect", false, "reconnect on disconnected sessions (default false)")
 	flag.Parse()
-
+	if len(os.Args) == 1 {
+		flag.PrintDefaults()
+		return
+	}
 	hosts, err := parseHosts(*flHost)
 	if err != nil {
 		log.Printf("parse hosts err: %s", err)
