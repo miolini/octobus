@@ -1,7 +1,7 @@
 Octobus
 =======
 
-Log monitoring in Go over multitiple ssh servers.
+Fast remote command executor over SSH.
 
 # Install
 
@@ -11,11 +11,18 @@ Log monitoring in Go over multitiple ssh servers.
 
 # Usage:
 ```
-  -f="": file list
-  -h="": host list
-  -k="~/.ssh/id_rsa": ssh key path
-  -s=false: use sudo
-  -u="": default username
+  --cmd string
+    	remote command (default "uname -a")
+  --hosts string
+    	hosts
+  --key string
+    	private key
+  --pass string
+    	optional user password
+  --user string
+    	remote user (default "root")
+  --verbose
+    	verbose mode
 ```
 
 # Issues
