@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	flag "github.com/ogier/pflag"
+	"github.com/flosch/pongo2"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"io/ioutil"
@@ -56,6 +57,17 @@ func runCmdOnHosts(hosts []string, cmd, defaultUser, defaultPass string, private
 
 func runCmdOnHost(host string, cmd, defaultUser, defaultPass string, privateKey ssh.AuthMethod, reconnect, verbose bool, wg *sync.WaitGroup) {
 	defer wg.Done()
+	
+	tpl, err := pongo2.FromString(cmd)
+	if err != nil {
+		log.Printf("cmd template err: %s", err)
+		return
+	}
+	cmd, err = tpl.Execute(pongo2.Context{"host":host})
+	if err != nil {
+		log.Printf("cmd template err: %s", err)
+		return
+	}
 	hostParsed, err := url.Parse(host)
 	if err != nil {
 		log.Printf("host %s parse failed: %s", host, err)
