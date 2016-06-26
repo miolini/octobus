@@ -182,7 +182,7 @@ func loadPrivateKey(keyPath string) (ssh.AuthMethod, error) {
 
 func parseHosts(flagHost string) ([]string, error) {
 	if strings.HasPrefix(flagHost, "@") {
-		hostData, err := ioutil.ReadFile(flagHost)
+		hostData, err := ioutil.ReadFile(flagHost[1:])
 		if err != nil {
 			return nil, err
 		}
