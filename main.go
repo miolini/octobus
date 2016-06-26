@@ -20,7 +20,8 @@ func main() {
 	flUser := flag.String("user", "root", "remote user")
 	flCmd := flag.String("cmd", "uname -a", "remote command")
 	flPass := flag.String("pass", "", "optional user password")
-	flVerbose := flag.Bool("verbose", false, "verbose mode")
+	flVerbose := flag.Bool("verbose", false, "verbose mode (default false)")
+	flReconnect := flag.Bool("reconnect", false, "reconnect on disconnected sessions (default false)")
 	flag.Parse()
 
 	hosts, err := parseHosts(*flHost)
@@ -41,19 +42,19 @@ func main() {
 		return
 	}
 
-	runCmdOnHosts(hosts, *flCmd, *flUser, *flPass, privateKey, *flVerbose)
+	runCmdOnHosts(hosts, *flCmd, *flUser, *flPass, privateKey, *flReconnect, *flVerbose)
 }
 
-func runCmdOnHosts(hosts []string, cmd, defaultUser, defaultPass string, privateKey ssh.AuthMethod, verbose bool) {
+func runCmdOnHosts(hosts []string, cmd, defaultUser, defaultPass string, privateKey ssh.AuthMethod, reconnect, verbose bool) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(hosts))
 	for _, host := range hosts {
-		go runCmdOnHost(host, cmd, defaultUser, defaultPass, privateKey, verbose, &wg)
+		go runCmdOnHost(host, cmd, defaultUser, defaultPass, privateKey, reconnect, verbose, &wg)
 	}
 	wg.Wait()
 }
 
-func runCmdOnHost(host string, cmd, defaultUser, defaultPass string, privateKey ssh.AuthMethod, verbose bool, wg *sync.WaitGroup) {
+func runCmdOnHost(host string, cmd, defaultUser, defaultPass string, privateKey ssh.AuthMethod, reconnect, verbose bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 	hostParsed, err := url.Parse(host)
 	if err != nil {
@@ -93,33 +94,59 @@ func runCmdOnHost(host string, cmd, defaultUser, defaultPass string, privateKey 
 	if pass != "" {
 		clientConfig.Auth = append([]ssh.AuthMethod{ssh.Password(pass)}, clientConfig.Auth...)
 	}
-	client, err := ssh.Dial("tcp", host, &clientConfig)
-	if err != nil {
-		log.Printf("connect to %s err: %s", host, err)
-		return
+	for {
+		client, err := ssh.Dial("tcp", host, &clientConfig)
+		if err != nil {
+			log.Printf("connect to %s err: %s", host, err)
+			if reconnect {
+				continue
+			} else {
+				return
+			}
+		}
+		session, err := client.NewSession()
+		if err != nil {
+			log.Printf("session for %s failed: %s", host, err)
+			if reconnect {
+				continue
+			} else {
+				return
+			}
+		}
+		defer session.Close()
+		stderr, err := session.StderrPipe()
+		if err != nil {
+			log.Printf("pipe stderr err: %s", err)
+			if reconnect {
+				continue
+			} else {
+				return
+			}
+		}
+		stdout, err := session.StdoutPipe()
+		if err != nil {
+			log.Printf("pipe stdout err: %s", err)
+			if reconnect {
+				continue
+			} else {
+				return
+			}
+		}
+		go io.Copy(&safeWriter{W: os.Stdout}, stdout)
+		go io.Copy(&safeWriter{W: os.Stderr}, stderr)
+		if err := session.Run(cmd); err != nil {
+			log.Printf("failed execute on host %s: %s", host, err)
+			if _, ok := err.(*ssh.ExitError); !ok && reconnect {
+				continue
+			}
+			return
+		}
+		break
 	}
-	session, err := client.NewSession()
-	if err != nil {
-		log.Printf("session for %s failed: %s", host, err)
-		return
-	}
-	defer session.Close()
-	stderr, err := session.StderrPipe()
-	if err != nil {
-		log.Printf("pipe stderr err: %s", err)
-		return
-	}
-	stdout, err := session.StdoutPipe()
-	if err != nil {
-		log.Printf("pipe stdout err: %s", err)
-		return
-	}
-	go io.Copy(&safeWriter{W: os.Stdout}, stdout)
-	go io.Copy(&safeWriter{W: os.Stderr}, stderr)
-	if err := session.Run(cmd); err != nil {
-		log.Printf("failed execute on host %s: %s", host, err)
-		return
-	}
+}
+
+type needReconnect struct {
+	err error
 }
 
 type safeWriter struct {
