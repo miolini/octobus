@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	flHost := flag.String("hosts", "", "hosts")
+	flHost := flag.String("hosts", "", "hosts, support @filepath for loading hosts from file")
 	flKey := flag.String("key", "", "private key")
 	flUser := flag.String("user", "root", "remote user")
 	flCmd := flag.String("cmd", "uname -a", "remote command")
