@@ -24,7 +24,3 @@ Fast remote command executor over SSH.
   --verbose
     	verbose mode
 ```
-
-# Issues
-
-- do not support encrypted ssh keys
