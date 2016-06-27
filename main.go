@@ -180,10 +180,7 @@ func loadPrivateKey(keyPath string) (ssh.AuthMethod, error) {
 	if keyPath == "" {
 		return nil, fmt.Errorf("need private key")
 	}
-	if keyPath[:2] == "~/" {
-		usr, _ := user.Current()
-		keyPath = strings.Replace(keyPath, "~", usr.HomeDir, 1)
-	}
+	keyPath = resolvePath(keyPath)
 	keyData, err := ioutil.ReadFile(keyPath)
 	if err != nil {
 		return nil, err
@@ -195,9 +192,18 @@ func loadPrivateKey(keyPath string) (ssh.AuthMethod, error) {
 	return ssh.PublicKeys(signer), nil
 }
 
+func resolvePath(path string) string {
+	if path[:1] != "~" {
+		return path
+	}
+	usr, _ := user.Current()
+	return strings.Replace(path, "~", usr.HomeDir, 1)
+}
+
 func parseHosts(flagHost string) ([]string, error) {
 	if strings.HasPrefix(flagHost, "@") {
-		hostData, err := ioutil.ReadFile(flagHost[1:])
+		path := resolvePath(flagHost[1:])
+		hostData, err := ioutil.ReadFile(path)
 		if err != nil {
 			return nil, err
 		}
