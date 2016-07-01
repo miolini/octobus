@@ -60,7 +60,7 @@ func runCmdOnHosts(hosts []string, cmd, defaultUser, defaultPass string, private
 
 func runCmdOnHost(host string, cmd, defaultUser, defaultPass string, privateKey ssh.AuthMethod, reconnect, verbose bool, wg *sync.WaitGroup) {
 	defer wg.Done()
-	
+
 	tpl, err := pongo2.FromString(cmd)
 	if err != nil {
 		log.Printf("cmd template err: %s", err)
@@ -207,7 +207,14 @@ func parseHosts(flagHost string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		return strings.Split(string(hostData), "\n"), nil
+		hosts := strings.Split(string(hostData), "\n")
+		var result []string
+		for _, host := range hosts {
+			if host != "" {
+				result = append(result, host)
+			}
+		}
+		return result, nil
 	}
 	return strings.Split(flagHost, ","), nil
 }
